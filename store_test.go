@@ -4,7 +4,7 @@ Last Change Author: Paul Côté
 Last Date Changed: 2022/06/11
 */
 
-package main
+package gux
 
 import (
 	"reflect"
