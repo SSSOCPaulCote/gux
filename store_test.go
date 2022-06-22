@@ -115,7 +115,7 @@ func TestStore(t *testing.T) {
 		}
 		wg.Wait()
 		// now we shouldn't get any state change updates and instead get a tick signal
-		unsub(store, listenerName)
+		unsub()
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
