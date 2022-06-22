@@ -97,3 +97,4 @@ func main() {
     }
 }
 ```
+You can be subscribed to state updates via `chan`. The store is responsible for opening and closing these channels. Because this package is quite lightweight, it's easy to spinup stores for different purposes and be only get state change updates for specific state values. Enjoy! 
