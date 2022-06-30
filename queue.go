@@ -7,10 +7,10 @@ import (
 type (
 	QueueListener struct {
 		IsConnected bool
-		Signal chan int
+		Signal      chan int
 	}
 	Queue struct {
-		queue []interface{}
+		queue     []interface{}
 		listeners map[string]*QueueListener
 		sync.RWMutex
 	}
@@ -19,13 +19,13 @@ type (
 // NewQueue instantiates a new Queue struct
 func NewQueue() *Queue {
 	return &Queue{
-		queue: []interface{}{},
+		queue:     []interface{}{},
 		listeners: make(map[string]*QueueListener),
 	}
 }
 
 // Pop returns the first item in the queue and deletes it from the queue
-func (q *Queue) Pop() interace{} {
+func (q *Queue) Pop() interface{} {
 	q.Lock()
 	defer q.Unlock()
 	var item interface{}
@@ -49,7 +49,7 @@ func (q *Queue) Push(v interface{}) {
 			close(l.Signal)
 			continue
 		}
-		l.Signal<-len(q.queue)+1 // + 1 because then the subscriber can know when the channel is closed (if they receive 0)
+		l.Signal <- len(q.queue) + 1 // + 1 because then the subscriber can know when the channel is closed (if they receive 0)
 		newListenerMap[n] = l
 	}
 	s.listeners = newListenerMap
