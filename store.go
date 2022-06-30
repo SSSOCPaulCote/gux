@@ -8,13 +8,15 @@ package gux
 
 import (
 	"sync"
+
 	bg "github.com/SSSOCPaulCote/blunderguard"
 )
 
 const (
 	ErrInvalidPayloadType = bg.Error("Invalid payload type")
-	ErrInvalidStateType = bg.Error("Invalid state type")
-	ErrInvalidAction = bg.Error("Invalid action")
+	ErrInvalidStateType   = bg.Error("Invalid state type")
+	ErrInvalidAction      = bg.Error("Invalid action")
+	ErrAlreadySubscribed  = bg.Error("subscriber with given name already subscribed")
 )
 
 type (
@@ -27,7 +29,7 @@ type (
 
 	Listener struct {
 		IsConnected bool
-		Signal		chan struct{}
+		Signal      chan struct{}
 	}
 
 	Store struct {
@@ -42,8 +44,8 @@ type (
 // CreateStore creates a new state store object
 func CreateStore(initialState interface{}, rootReducer Reducer) *Store {
 	return &Store{
-		state:   initialState,
-		reducer: rootReducer,
+		state:     initialState,
+		reducer:   rootReducer,
 		listeners: make(map[string]*Listener),
 		// unsub: func(store *Store, lName string) {
 		// 	store.mutex.Lock()
@@ -77,7 +79,7 @@ func (s *Store) Dispatch(action Action) error {
 			close(l.Signal)
 			continue
 		}
-		l.Signal<-struct{}{}
+		l.Signal <- struct{}{}
 		newListenerMap[n] = l
 	}
 	s.listeners = newListenerMap
@@ -86,16 +88,19 @@ func (s *Store) Dispatch(action Action) error {
 
 // Subscribe adds a callback function to the list of listeners which will be executed upon each Dispatch call.
 // Returns the index in the listener slice belonging to callback and unsubscribe function
-func (s *Store) Subscribe(name string) (chan struct{}, func()) {
+func (s *Store) Subscribe(name string) (chan struct{}, func(), error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	if _, ok := s.listeners[name]; ok {
+		return nil, nil, ErrAlreadySubscribed
+	}
 	s.listeners[name] = &Listener{IsConnected: true, Signal: make(chan struct{}, 2)} // made channel buffered for edge case where unsub() and l.Signal<-struct{}{} listener disconnects, it won't hang
 	unsub := func() {
 		s.mutex.Lock()
 		defer s.mutex.Unlock()
 		s.listeners[name].IsConnected = false
 	}
-	return s.listeners[name].Signal, unsub
+	return s.listeners[name].Signal, unsub, nil
 }
 
 // CombineReducers combines any number of reducers and returns one combined reducer
