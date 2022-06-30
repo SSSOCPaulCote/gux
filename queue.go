@@ -44,7 +44,7 @@ func (q *Queue) Push(v interface{}) {
 	defer q.Unlock()
 	q.queue = append(q.queue, v)
 	newListenerMap := make(map[string]*QueueListener)
-	for n, l := range s.listeners {
+	for n, l := range q.listeners {
 		if !l.IsConnected {
 			close(l.Signal)
 			continue
@@ -52,21 +52,21 @@ func (q *Queue) Push(v interface{}) {
 		l.Signal <- len(q.queue) + 1 // + 1 because then the subscriber can know when the channel is closed (if they receive 0)
 		newListenerMap[n] = l
 	}
-	s.listeners = newListenerMap
+	q.listeners = newListenerMap
 }
 
 // Subscribe returns a channel which will have signals sent when a new item is pushed as well as an unsub function
 func (q *Queue) Subscribe(name string) (chan int, func(), error) {
 	q.Lock()
 	defer q.Unlock()
-	if _, ok := s.listeners[name]; ok {
+	if _, ok := q.listeners[name]; ok {
 		return nil, nil, ErrAlreadySubscribed
 	}
-	s.listeners[name] = &Listener{IsConnected: true, Signal: make(chan int, 2)}
+	q.listeners[name] = &QueueListener{IsConnected: true, Signal: make(chan int, 2)}
 	unsub := func() {
-		s.mutex.Lock()
-		defer s.mutex.Unlock()
-		s.listeners[name].IsConnected = false
+		q.Lock()
+		defer q.Unlock()
+		q.listeners[name].IsConnected = false
 	}
-	return q.subChan, unsub, nil
+	return q.listeners[name].Signal, unsub, nil
 }
