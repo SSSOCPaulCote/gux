@@ -26,23 +26,24 @@ var (
 		}
 		switch a.Type {
 		case "increment":
-			return cState+payload, nil
+			return cState + payload, nil
 		case "decrement":
-			return cState-payload, nil
+			return cState - payload, nil
 		default:
 			return nil, ErrInvalidAction
 		}
-	} 
-	testInitialState int = 0
-	testIncrementAction = Action{
-		Type: "increment",
+	}
+	testInitialState    int = 0
+	testIncrementAction     = Action{
+		Type:    "increment",
 		Payload: 1,
 	}
 	testDecrementAction = Action{
-		Type: "decrement",
+		Type:    "decrement",
 		Payload: 1,
 	}
-	listenerName string = "test"
+	listenerName    string = "test"
+	listenerNameTwo string = "testtwo"
 )
 
 // TestStore will test the state store against many different scenarios
@@ -95,7 +96,7 @@ func TestStore(t *testing.T) {
 	// testing subscribe and unsubscribe
 	t.Run("subscribe unsubscribe", func(t *testing.T) {
 		var wg sync.WaitGroup
-		stateChangeChan, unsub := store.Subscribe(listenerName)
+		stateChangeChan, unsub, _ := store.Subscribe(listenerName)
 		ticker := time.NewTicker(time.Duration(int64(2)) * time.Second)
 		defer ticker.Stop()
 		// We should get a state change update before the first tick
@@ -127,6 +128,14 @@ func TestStore(t *testing.T) {
 			return
 		}()
 		wg.Wait()
+	})
+	t.Run("two subscribers same name", func(t *testing.T) {
+		_, unsub, _ := store.Subscribe(listenerNameTwo)
+		defer unsub()
+		_, _, err := store.Subscribe(listenerNameTwo)
+		if err != ErrAlreadySubscribed {
+			t.Errorf("Unexpected error when subscribing twice with the same name: %v", err)
+		}
 	})
 	// test for concurrent write/read
 	t.Run("concurrency", func(t *testing.T) {
