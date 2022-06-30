@@ -33,11 +33,10 @@ type (
 	}
 
 	Store struct {
-		mutex     sync.RWMutex
 		state     interface{}
 		reducer   Reducer
 		listeners map[string]*Listener
-		//unsub     func(*Store, string)
+		sync.RWMutex
 	}
 )
 
@@ -47,25 +46,20 @@ func CreateStore(initialState interface{}, rootReducer Reducer) *Store {
 		state:     initialState,
 		reducer:   rootReducer,
 		listeners: make(map[string]*Listener),
-		// unsub: func(store *Store, lName string) {
-		// 	store.mutex.Lock()
-		// 	defer store.mutex.Unlock()
-		// 	store.listeners[lName].IsConnected = false
-		// },
 	}
 }
 
 // GetState returns the current state object
 func (s *Store) GetState() interface{} {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
+	s.RLock()
+	defer s.RUnlock()
 	return s.state
 }
 
 // Dispatch takes an action and returns an error. It is the only way to change the state
 func (s *Store) Dispatch(action Action) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.Lock()
+	defer s.Unlock()
 	newState, err := s.reducer(s.state, action)
 	if err != nil {
 		return err
@@ -89,15 +83,15 @@ func (s *Store) Dispatch(action Action) error {
 // Subscribe adds a callback function to the list of listeners which will be executed upon each Dispatch call.
 // Returns the index in the listener slice belonging to callback and unsubscribe function
 func (s *Store) Subscribe(name string) (chan struct{}, func(), error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.Lock()
+	defer s.Unlock()
 	if _, ok := s.listeners[name]; ok {
 		return nil, nil, ErrAlreadySubscribed
 	}
 	s.listeners[name] = &Listener{IsConnected: true, Signal: make(chan struct{}, 2)} // made channel buffered for edge case where unsub() and l.Signal<-struct{}{} listener disconnects, it won't hang
 	unsub := func() {
-		s.mutex.Lock()
-		defer s.mutex.Unlock()
+		s.Lock()
+		defer s.Unlock()
 		s.listeners[name].IsConnected = false
 	}
 	return s.listeners[name].Signal, unsub, nil
