@@ -12,15 +12,17 @@ type (
 	Queue struct {
 		queue     []interface{}
 		listeners map[string]*QueueListener
+		limit     int
 		sync.RWMutex
 	}
 )
 
 // NewQueue instantiates a new Queue struct
-func NewQueue() *Queue {
+func NewQueue(queueLimit int) *Queue {
 	return &Queue{
 		queue:     []interface{}{},
 		listeners: make(map[string]*QueueListener),
+		limit:     queueLimit,
 	}
 }
 
@@ -42,6 +44,9 @@ func (q *Queue) Pop() interface{} {
 func (q *Queue) Push(v interface{}) {
 	q.Lock()
 	defer q.Unlock()
+	if len(q.queue) == q.limit {
+		q.queue = q.queue[1:]
+	}
 	q.queue = append(q.queue, v)
 	newListenerMap := make(map[string]*QueueListener)
 	for n, l := range q.listeners {
